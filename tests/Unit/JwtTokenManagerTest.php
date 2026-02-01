@@ -7,6 +7,7 @@ namespace DevToolbelt\JwtTokenManager\Tests\Unit;
 use DevToolbelt\JwtTokenManager\JwtConfig;
 use DevToolbelt\JwtTokenManager\TokenPayload;
 use DevToolbelt\JwtTokenManager\Tests\TestCase;
+use DevToolbelt\JwtTokenManager\Timezone;
 use DevToolbelt\JwtTokenManager\JwtTokenManager;
 use DevToolbelt\JwtTokenManager\Exceptions\ExpiredTokenException;
 use DevToolbelt\JwtTokenManager\Exceptions\InvalidTokenException;
@@ -328,5 +329,105 @@ final class JwtTokenManagerTest extends TestCase
 
         $this->assertGreaterThanOrEqual($before, $payload->getNotBefore());
         $this->assertLessThanOrEqual($after, $payload->getNotBefore());
+    }
+
+    public function testEncodeWithCustomTimezoneGeneratesValidToken(): void
+    {
+        $config = new JwtConfig(
+            privateKey: $this->privateKey,
+            publicKey: $this->publicKey,
+            issuer: 'https://api.example.com',
+            timezone: Timezone::AMERICA_SAO_PAULO
+        );
+
+        $manager = new JwtTokenManager($config);
+        $token = $manager->encode('user-123');
+
+        $this->assertNotEmpty($token);
+        $this->assertIsString($token);
+        $this->assertCount(3, explode('.', $token));
+    }
+
+    public function testEncodeWithDifferentTimezonesGeneratesValidTimestamps(): void
+    {
+        $timezones = [
+            Timezone::UTC,
+            Timezone::AMERICA_NEW_YORK,
+            Timezone::EUROPE_LONDON,
+            Timezone::ASIA_TOKYO,
+            Timezone::AMERICA_SAO_PAULO,
+        ];
+
+        foreach ($timezones as $timezone) {
+            $config = new JwtConfig(
+                privateKey: $this->privateKey,
+                publicKey: $this->publicKey,
+                issuer: 'https://api.example.com',
+                timezone: $timezone
+            );
+
+            $manager = new JwtTokenManager($config);
+            $beforeTime = time();
+            $token = $manager->encode('user-123');
+            $afterTime = time();
+
+            $payload = $manager->decode($token);
+
+            // Verify iat is within expected range
+            $this->assertGreaterThanOrEqual($beforeTime, $payload->getIssuedAt());
+            $this->assertLessThanOrEqual($afterTime, $payload->getIssuedAt());
+
+            // Verify exp is iat + TTL (1 hour = 3600 seconds)
+            $this->assertEquals(
+                $payload->getIssuedAt() + 3600,
+                $payload->getExpiration(),
+                "Expiration should be iat + TTL for timezone {$timezone->value}"
+            );
+        }
+    }
+
+    public function testTokenGeneratedWithOneTimezoneCanBeDecodedByAnother(): void
+    {
+        // Generate token with Sao Paulo timezone
+        $saoPauloConfig = new JwtConfig(
+            privateKey: $this->privateKey,
+            publicKey: $this->publicKey,
+            issuer: 'https://api.example.com',
+            timezone: Timezone::AMERICA_SAO_PAULO
+        );
+
+        $saoPauloManager = new JwtTokenManager($saoPauloConfig);
+        $token = $saoPauloManager->encode('user-123');
+
+        // Decode with Tokyo timezone - should work because timestamps are Unix timestamps (UTC)
+        $tokyoConfig = new JwtConfig(
+            privateKey: $this->privateKey,
+            publicKey: $this->publicKey,
+            issuer: 'https://api.example.com',
+            timezone: Timezone::ASIA_TOKYO
+        );
+
+        $tokyoManager = new JwtTokenManager($tokyoConfig);
+        $payload = $tokyoManager->decode($token);
+
+        $this->assertEquals('user-123', $payload->getSubject());
+        $this->assertFalse($payload->isExpired());
+    }
+
+    public function testGenerateRefreshTokenWithCustomTimezone(): void
+    {
+        $config = new JwtConfig(
+            privateKey: $this->privateKey,
+            publicKey: $this->publicKey,
+            issuer: 'https://api.example.com',
+            timezone: Timezone::EUROPE_PARIS
+        );
+
+        $manager = new JwtTokenManager($config);
+        $refreshToken = $manager->generateRefreshToken();
+
+        $this->assertNotEmpty($refreshToken);
+        $this->assertEquals(40, strlen($refreshToken));
+        $this->assertMatchesRegularExpression('/^[0-9a-f]{40}$/', $refreshToken);
     }
 }

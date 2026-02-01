@@ -4,17 +4,19 @@ declare(strict_types=1);
 
 namespace DevToolbelt\JwtTokenManager;
 
+use Exception;
 use DomainException;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use Ramsey\Uuid\Uuid;
+use DateTimeImmutable;
 use UnexpectedValueException;
 use Firebase\JWT\ExpiredException;
 use Firebase\JWT\BeforeValidException;
 use Firebase\JWT\SignatureInvalidException;
+use DevToolbelt\JwtTokenManager\Exceptions\ExpiredTokenException;
 use DevToolbelt\JwtTokenManager\Exceptions\InvalidClaimException;
 use DevToolbelt\JwtTokenManager\Exceptions\InvalidTokenException;
-use DevToolbelt\JwtTokenManager\Exceptions\ExpiredTokenException;
 use DevToolbelt\JwtTokenManager\Exceptions\MissingClaimsException;
 
 /**
@@ -109,24 +111,27 @@ final class JwtTokenManager
      * @param array<string, mixed> $customClaims Additional claims to include in the token payload.
      *                                           Can override optional claims (aud, typ, nbf).
      * @return string The encoded JWT token string
+     * @throws Exception
      */
     public function encode(string $subject, array $customClaims = []): string
     {
-        $now = time();
+        $now = new DateTimeImmutable('now', $this->config->getDateTimeZone());
+        $timestamp = $now->getTimestamp();
+
         $this->lastSessionId = Uuid::uuid7()->toString();
         $this->lastJti = Uuid::uuid7()->toString();
 
         $optionalClaims = [
             'aud' => $this->config->getAudience(),
             'typ' => 'access',
-            'nbf' => $now - 5,
+            'nbf' => $timestamp - 5,
         ];
 
         $protectedClaims = [
             'iss' => $this->config->getIssuer(),
             'sub' => $subject,
-            'iat' => $now,
-            'exp' => $now + $this->config->getTtlSeconds(),
+            'iat' => $timestamp,
+            'exp' => $timestamp + $this->config->getTtlSeconds(),
             'jti' => $this->lastJti,
             'sid' => $this->lastSessionId,
         ];

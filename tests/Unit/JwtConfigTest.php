@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace DevToolbelt\JwtTokenManager\Tests\Unit;
 
+use DateTimeZone;
 use DevToolbelt\JwtTokenManager\Algorithm;
 use DevToolbelt\JwtTokenManager\JwtConfig;
 use DevToolbelt\JwtTokenManager\Tests\TestCase;
+use DevToolbelt\JwtTokenManager\Timezone;
 
 final class JwtConfigTest extends TestCase
 {
@@ -207,5 +209,101 @@ final class JwtConfigTest extends TestCase
         $this->assertEquals(20160, $config->getRefreshTtlMinutes());
         $this->assertNull($config->getAudience());
         $this->assertEquals(['iss', 'jti', 'exp', 'iat', 'typ', 'sub'], $config->getRequiredClaims());
+    }
+
+    public function testConstructorWithDefaultTimezoneIsUtc(): void
+    {
+        $config = new JwtConfig(
+            privateKey: $this->privateKey,
+            publicKey: $this->publicKey,
+            issuer: 'https://api.example.com'
+        );
+
+        $this->assertEquals(Timezone::UTC, $config->getTimezone());
+    }
+
+    public function testConstructorWithCustomTimezone(): void
+    {
+        $config = new JwtConfig(
+            privateKey: $this->privateKey,
+            publicKey: $this->publicKey,
+            issuer: 'https://api.example.com',
+            timezone: Timezone::AMERICA_SAO_PAULO
+        );
+
+        $this->assertEquals(Timezone::AMERICA_SAO_PAULO, $config->getTimezone());
+    }
+
+    public function testGetDateTimeZoneReturnsDateTimeZoneInstance(): void
+    {
+        $config = new JwtConfig(
+            privateKey: $this->privateKey,
+            publicKey: $this->publicKey,
+            issuer: 'https://api.example.com',
+            timezone: Timezone::EUROPE_LONDON
+        );
+
+        $dateTimeZone = $config->getDateTimeZone();
+
+        $this->assertInstanceOf(DateTimeZone::class, $dateTimeZone);
+        $this->assertEquals('Europe/London', $dateTimeZone->getName());
+    }
+
+    public function testFromArrayWithTimezoneString(): void
+    {
+        $config = JwtConfig::fromArray([
+            'private_key' => $this->privateKey,
+            'public_key' => $this->publicKey,
+            'issuer' => 'https://api.example.com',
+            'timezone' => 'America/New_York'
+        ]);
+
+        $this->assertEquals(Timezone::AMERICA_NEW_YORK, $config->getTimezone());
+    }
+
+    public function testFromArrayWithTimezoneEnum(): void
+    {
+        $config = JwtConfig::fromArray([
+            'private_key' => $this->privateKey,
+            'public_key' => $this->publicKey,
+            'issuer' => 'https://api.example.com',
+            'timezone' => Timezone::ASIA_TOKYO
+        ]);
+
+        $this->assertEquals(Timezone::ASIA_TOKYO, $config->getTimezone());
+    }
+
+    public function testFromArrayWithDefaultTimezone(): void
+    {
+        $config = JwtConfig::fromArray([
+            'private_key' => $this->privateKey,
+            'public_key' => $this->publicKey,
+            'issuer' => 'https://api.example.com'
+        ]);
+
+        $this->assertEquals(Timezone::UTC, $config->getTimezone());
+    }
+
+    public function testFromKeyFilesWithTimezone(): void
+    {
+        $config = JwtConfig::fromKeyFiles(
+            privateKeyPath: self::FIXTURES_PATH . '/private.key',
+            publicKeyPath: self::FIXTURES_PATH . '/public.key',
+            issuer: 'https://api.example.com',
+            timezone: Timezone::AMERICA_SAO_PAULO
+        );
+
+        $this->assertEquals(Timezone::AMERICA_SAO_PAULO, $config->getTimezone());
+    }
+
+    public function testFromKeyFilesWithDefaultTimezone(): void
+    {
+        $config = JwtConfig::fromKeyFiles(
+            privateKeyPath: self::FIXTURES_PATH . '/private.key',
+            publicKeyPath: self::FIXTURES_PATH . '/public.key',
+            issuer: 'https://api.example.com'
+        );
+
+        $this->assertEquals(Timezone::UTC, $config->getTimezone());
     }
 }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace DevToolbelt\JwtTokenManager;
 
+use DateTimeZone;
+
 final class JwtConfig
 {
     private const DEFAULT_TTL_MINUTES = 60;
@@ -18,7 +20,8 @@ final class JwtConfig
         private readonly int $ttlMinutes = self::DEFAULT_TTL_MINUTES,
         private readonly int $refreshTtlMinutes = self::DEFAULT_REFRESH_TTL_MINUTES,
         private readonly ?array $audience = null,
-        private readonly array $requiredClaims = self::DEFAULT_REQUIRED_CLAIMS
+        private readonly array $requiredClaims = self::DEFAULT_REQUIRED_CLAIMS,
+        private readonly Timezone $timezone = Timezone::UTC
     ) {
     }
 
@@ -77,11 +80,28 @@ final class JwtConfig
         return $this->requiredClaims;
     }
 
+    public function getTimezone(): Timezone
+    {
+        return $this->timezone;
+    }
+
+    public function getDateTimeZone(): DateTimeZone
+    {
+        return $this->timezone->toDateTimeZone();
+    }
+
     public static function fromArray(array $config): self
     {
         $algorithm = isset($config['algorithm'])
             ? (is_string($config['algorithm']) ? Algorithm::from($config['algorithm']) : $config['algorithm'])
             : Algorithm::RS256;
+
+        $timezone = Timezone::UTC;
+        if (isset($config['timezone'])) {
+            $timezone = is_string($config['timezone'])
+                ? Timezone::from($config['timezone'])
+                : $config['timezone'];
+        }
 
         return new self(
             privateKey: $config['private_key'],
@@ -91,7 +111,8 @@ final class JwtConfig
             ttlMinutes: $config['ttl_minutes'] ?? self::DEFAULT_TTL_MINUTES,
             refreshTtlMinutes: $config['refresh_ttl_minutes'] ?? self::DEFAULT_REFRESH_TTL_MINUTES,
             audience: isset($config['audience']) ? (array) $config['audience'] : null,
-            requiredClaims: $config['required_claims'] ?? self::DEFAULT_REQUIRED_CLAIMS
+            requiredClaims: $config['required_claims'] ?? self::DEFAULT_REQUIRED_CLAIMS,
+            timezone: $timezone
         );
     }
 
@@ -103,7 +124,8 @@ final class JwtConfig
         int $ttlMinutes = self::DEFAULT_TTL_MINUTES,
         int $refreshTtlMinutes = self::DEFAULT_REFRESH_TTL_MINUTES,
         ?array $audience = null,
-        array $requiredClaims = self::DEFAULT_REQUIRED_CLAIMS
+        array $requiredClaims = self::DEFAULT_REQUIRED_CLAIMS,
+        Timezone $timezone = Timezone::UTC
     ): self {
         return new self(
             privateKey: file_get_contents($privateKeyPath),
@@ -113,7 +135,8 @@ final class JwtConfig
             ttlMinutes: $ttlMinutes,
             refreshTtlMinutes: $refreshTtlMinutes,
             audience: $audience,
-            requiredClaims: $requiredClaims
+            requiredClaims: $requiredClaims,
+            timezone: $timezone
         );
     }
 }
