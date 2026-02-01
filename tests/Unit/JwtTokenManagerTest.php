@@ -10,6 +10,7 @@ use DevToolbelt\JwtTokenManager\Tests\TestCase;
 use DevToolbelt\JwtTokenManager\Timezone;
 use DevToolbelt\JwtTokenManager\JwtTokenManager;
 use DevToolbelt\JwtTokenManager\Exceptions\ExpiredTokenException;
+use DevToolbelt\JwtTokenManager\Exceptions\InvalidSignatureException;
 use DevToolbelt\JwtTokenManager\Exceptions\InvalidTokenException;
 
 final class JwtTokenManagerTest extends TestCase
@@ -429,5 +430,30 @@ final class JwtTokenManagerTest extends TestCase
         $this->assertNotEmpty($refreshToken);
         $this->assertEquals(40, strlen($refreshToken));
         $this->assertMatchesRegularExpression('/^[0-9a-f]{40}$/', $refreshToken);
+    }
+
+    public function testDecodeThrowsInvalidSignatureExceptionForWrongPublicKey(): void
+    {
+        // Generate a token with the original keys
+        $token = $this->manager->encode('user-123');
+
+        // Load a different public key (not matching the private key used to sign)
+        $differentPublicKey = file_get_contents(self::FIXTURES_PATH . '/different_public.key');
+
+        // Create a manager with the wrong public key
+        $wrongKeyConfig = new JwtConfig(
+            privateKey: $this->privateKey,
+            publicKey: $differentPublicKey,
+            issuer: 'https://api.example.com',
+            audience: ['https://app.example.com'],
+            requiredClaims: ['iss', 'aud', 'jti', 'sid', 'exp', 'nbf', 'iat', 'typ', 'sub']
+        );
+
+        $wrongKeyManager = new JwtTokenManager($wrongKeyConfig);
+
+        $this->expectException(InvalidSignatureException::class);
+        $this->expectExceptionMessage('Token signature verification failed');
+
+        $wrongKeyManager->decode($token);
     }
 }

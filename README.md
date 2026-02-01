@@ -289,8 +289,10 @@ try {
 
 } catch (ExpiredTokenException $e) {
     // Token has expired
+} catch (InvalidSignatureException $e) {
+    // Public key could not validate the token signature
 } catch (InvalidTokenException $e) {
-    // Token is invalid (bad signature, malformed, etc.)
+    // Token is malformed or not yet valid
 } catch (InvalidClaimException $e) {
     // A claim validation failed
     $e->getClaimName();      // Which claim failed

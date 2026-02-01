@@ -16,6 +16,7 @@ use Firebase\JWT\BeforeValidException;
 use Firebase\JWT\SignatureInvalidException;
 use DevToolbelt\JwtTokenManager\Exceptions\ExpiredTokenException;
 use DevToolbelt\JwtTokenManager\Exceptions\InvalidClaimException;
+use DevToolbelt\JwtTokenManager\Exceptions\InvalidSignatureException;
 use DevToolbelt\JwtTokenManager\Exceptions\InvalidTokenException;
 use DevToolbelt\JwtTokenManager\Exceptions\MissingClaimsException;
 
@@ -58,7 +59,8 @@ final class JwtTokenManager
      * @param string $token The raw JWT token (without "Bearer " prefix)
      * @return TokenPayload The decoded payload wrapped in a TokenPayload object
      * @throws ExpiredTokenException When the token has expired
-     * @throws InvalidTokenException When the token is malformed, has invalid signature, or is not yet valid
+     * @throws InvalidSignatureException When the public key cannot validate the token signature
+     * @throws InvalidTokenException When the token is malformed or is not yet valid
      * @throws InvalidClaimException When a claim value doesn't match the expected value
      * @throws MissingClaimsException When required claims are missing from the token
      */
@@ -81,7 +83,7 @@ final class JwtTokenManager
         } catch (BeforeValidException) {
             throw new InvalidTokenException('Token is not yet valid');
         } catch (SignatureInvalidException) {
-            throw new InvalidTokenException('Token signature is invalid');
+            throw new InvalidSignatureException();
         } catch (DomainException $e) {
             throw new InvalidTokenException($e->getMessage());
         } catch (UnexpectedValueException $e) {

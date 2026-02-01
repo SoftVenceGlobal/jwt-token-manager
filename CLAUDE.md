@@ -50,7 +50,8 @@ composer phpstan
 All exceptions extend `JwtException` (abstract base with error key support):
 
 - `ExpiredTokenException` - Token past expiration
-- `InvalidTokenException` - Bad signature, malformed, or not yet valid
+- `InvalidSignatureException` - Public key could not validate the token signature
+- `InvalidTokenException` - Malformed token or not yet valid
 - `InvalidClaimException` - Claim value mismatch (includes claim name, actual, expected values)
 - `MissingClaimsException` - Required claims not present (includes array of missing claim names)
 
