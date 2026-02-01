@@ -10,8 +10,14 @@ final class JwtConfig
 {
     private const DEFAULT_TTL_MINUTES = 60;
     private const DEFAULT_REFRESH_TTL_MINUTES = 20160;
+
+    /** @var array<string> */
     private const DEFAULT_REQUIRED_CLAIMS = ['iss', 'jti', 'exp', 'iat', 'typ', 'sub'];
 
+    /**
+     * @param array<string>|null $audience
+     * @param array<string> $requiredClaims
+     */
     public function __construct(
         private readonly string $privateKey,
         private readonly string $publicKey,
@@ -70,11 +76,17 @@ final class JwtConfig
         return $this->issuer;
     }
 
+    /**
+     * @return array<string>|null
+     */
     public function getAudience(): ?array
     {
         return $this->audience;
     }
 
+    /**
+     * @return array<string>
+     */
     public function getRequiredClaims(): array
     {
         return $this->requiredClaims;
@@ -90,6 +102,9 @@ final class JwtConfig
         return $this->timezone->toDateTimeZone();
     }
 
+    /**
+     * @param array<string, mixed> $config
+     */
     public static function fromArray(array $config): self
     {
         $algorithm = isset($config['algorithm'])
@@ -116,6 +131,10 @@ final class JwtConfig
         );
     }
 
+    /**
+     * @param array<string>|null $audience
+     * @param array<string> $requiredClaims
+     */
     public static function fromKeyFiles(
         string $privateKeyPath,
         string $publicKeyPath,

@@ -8,8 +8,9 @@ final class InvalidSignatureException extends JwtException
 {
     protected string $errorKey = 'invalidSignature';
 
-    public function __construct(string $message = 'Token signature verification failed. The public key could not validate this token.')
-    {
+    public function __construct(
+        string $message = 'Token signature verification failed. The public key could not validate this token.'
+    ) {
         parent::__construct($message);
     }
 }
